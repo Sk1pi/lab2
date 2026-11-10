@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.35" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <PackageReference Include="LiteDB" Version="5.0.21" />
+    <PackageReference Include="DBreeze" Version="1.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\sql\01_live_schema.sql" Link="sql\01_live_schema.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\sql\02_live_indexes.sql" Link="sql\02_live_indexes.sql" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

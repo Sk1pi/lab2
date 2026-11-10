@@ -1,0 +1,62 @@
+
+=== 1. Вставка документа (Insert) ===
+  > SELECT $ FROM matches WHERE _id = 999999999
+    {"_id":999999999,"Sport":"Football","TournamentId":1,"TournamentName":"Футбольна ліга 1","Venue":{"Name":"Арена Київ 1","City":"Київ"},"StartTime":{"$date":"2026-11-20T19:00:00.0000000Z"},"Status":"Live","Home":{"TeamId":1,"Name":"Сокіл Київ","Score":0,"Lineup":[{"PlayerId":10,"Name":"Максим Коваленко","Number":9,"Position":"FW","IsStarter":true}]},"Away":{"TeamId":2,"Name":"Вітер Львів","Score":0,"Lineup":[{"PlayerId":20,"Name":"Олег Бондар","Number":7,"Position":"FW","IsStarter":true}]},"Timeline":[],"Stats":{"possession":{"Home":{"$numberDecimal":"50"},"Away":{"$numberDecimal":"50"}}}}
+
+=== 2. Гол у live-режимі: зміна документа і Update ===
+  > SELECT { score: Home.Score + ':' + Away.Score, events: COUNT(Timeline) } FROM matches WHERE _id = 999999999
+    {"score":"1:0","events":1}
+
+=== 3. Подія нового типу без зміни схеми (VAR) ===
+  > SELECT $.Timeline[@.Type = 'var'] FROM matches WHERE _id = 999999999
+    {"Timeline":[{"Seq":2,"Minute":34,"Type":"var","TeamId":2,"PlayerId":20,"PlayerName":"Олег Бондар","Details":{"decision":"no goal","reason":"offside","durationSec":"95"}}]}
+
+=== 4. Оновлення без читання (UpdateMany з виразом) ===
+  Змінено документів: 1
+  > SELECT { _id, Status } FROM matches WHERE _id = 999999999
+    {"_id":999999999,"Status":"Finished"}
+
+=== 5. Пошук за елементом масиву: матчі з голом у перші 5 хвилин ===
+  > SELECT { _id, Home: Home.Name, Away: Away.Name } FROM matches WHERE COUNT($.Timeline[@.Type = 'goal' AND @.Minute <= 5]) > 0 LIMIT 3
+    {"_id":2,"Home":"Ведмеді Чернігів 108","Away":"Яструби Полтава 57"}
+    {"_id":12,"Home":"Сокіл Київ 140","Away":"Ведмеді Чернігів 48"}
+    {"_id":30,"Home":"Шторм Вінниця 56","Away":"Барси Полтава 87"}
+
+=== 6. LINQ-запит: останні live-матчі з проекцією ===
+  #1933 2025-12-29 04:00 Вітер Львів 81 0:3 Сокіл Київ 140
+  #23803 2025-12-29 02:00 Леви Харків 3 1:0 Блискавка Ужгород 9
+  #45673 2025-12-29 01:00 Вовки Запоріжжя 65 0:5 Бізони Чернігів 18
+  #27894 2025-12-29 00:00 Яструби Полтава 37 1:1 Буревій Одеса 62
+  #67543 2025-12-29 00:00 Зубри Вінниця 126 1:1 Барси Полтава 27
+
+=== 7. Групування: кількість матчів і середня кількість голів по турнірах ===
+  > SELECT { tournament: @key, matches: COUNT(*), avgGoals: AVG(*.Home.Score) + AVG(*.Away.Score) } FROM matches WHERE Sport = 'Football' AND Status = 'Finished' GROUP BY TournamentName LIMIT 5
+    {"tournament":"Футбольна ліга 1","matches":3319,"avgGoals":2.442603194}
+    {"tournament":"Футбольна ліга 10","matches":3314,"avgGoals":2.488231744}
+    {"tournament":"Футбольна ліга 11","matches":3345,"avgGoals":2.444843049}
+    {"tournament":"Футбольна ліга 12","matches":3344,"avgGoals":2.453947368}
+    {"tournament":"Футбольна ліга 13","matches":3356,"avgGoals":2.491656734}
+
+=== 8. Розподіл типів подій у турнірі 1 ===
+  foul: 34456
+  sub: 17194
+  card: 12953
+  corner: 12875
+  goal: 8581
+  var: 1
+
+=== 9. План виконання: пошук матчів команди використовує індекс ===
+  > EXPLAIN SELECT $ FROM matches WHERE Home.TeamId = 7
+    {"collection":"matches","snaphost":"read","pipe":"queryPipe","index":{"name":"idx_home_team","expr":"$.Home.TeamId","order":1,"mode":"INDEX SEEK(idx_home_team = 7)","cost":10},"lookup":{"loader":"document","fields":"$"},"select":{"expr":"$","all":false}}
+
+=== 10. Індекси колекції ===
+  > SELECT { name, expression } FROM $indexes WHERE collection = 'matches'
+    {"name":"_id","expression":"$._id"}
+    {"name":"idx_home_team","expression":"$.Home.TeamId"}
+    {"name":"idx_away_team","expression":"$.Away.TeamId"}
+    {"name":"idx_tournament","expression":"$.TournamentId"}
+    {"name":"idx_timeline_type","expression":"MAP($.Timeline[*]=>@.Type)"}
+
+=== 11. Видалення документа ===
+  Delete(999999999) -> True
+  Документів у колекції: 106000
